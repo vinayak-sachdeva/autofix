@@ -1,5 +1,5 @@
 package test.helper;
 
 public class Constants {
-    static final public String NEO4J_PASSWORD = "%228Vinsac";
+    static final public String NEO4J_PASSWORD = "random password";
 }

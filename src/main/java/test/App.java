@@ -18,7 +18,7 @@ import java.util.List;
 @SpringBootApplication
 public class App {
 
-    public static void refactorMethod() {
+    /*public static void refactorMethod() {
         try {
             Neo4jConnection neo4jConnection = new Neo4jConnection(new Sandbox("bolt://codegraph-staging-sandbox.devfactory.com:21991/browser/", "http://codegraph-staging-sandbox.devfactory.com:21990/browser/", "neo4j", Constants.NEO4J_PASSWORD), Integer.MAX_VALUE);
 
@@ -136,7 +136,7 @@ public class App {
         Block methodBlock = (Block) nodeFinder.findListOfNodes(Labels.Block, "src/main/java/package1/Graph.java", 97, 108).get(0);
 
         methodBlock.addStatement(expressionStatement);
-    }
+    }*/
 
     public static void main(String[] args) {
         //SpringApplication.run(App.class, args);
