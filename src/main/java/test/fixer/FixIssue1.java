@@ -16,6 +16,9 @@ public class FixIssue1 {
     NodeCreator nodeCreator;
     NodeFinder nodeFinder;
     AutoFixNeo4jKit autoFixNeo4jKit;
+    String dataStoreName;
+
+    List <VariableDeclarationStatement> variableDeclarationStatementList;
 
     public FixIssue1(Neo4jConnection neo4jConnection, List < List <Long> > nodeIdMappingList) {
         this.neo4jConnection = neo4jConnection;
@@ -33,10 +36,9 @@ public class FixIssue1 {
         Boolean newClassRequiredForNewMethod = false;
 
         for(Long nodeId : FirstNodeIdMapping) {
-
             if (typeDeclaration == null) typeDeclaration = autoFixNeo4jKit.getTypeDeclarationFromStatementNodeId(nodeId);
 
-            if (autoFixNeo4jKit.getTypeDeclarationFromStatementNodeId(nodeId) != typeDeclaration) {
+            if (!autoFixNeo4jKit.getTypeDeclarationFromStatementNodeId(nodeId).equals(typeDeclaration)) {
                 newClassRequiredForNewMethod = true;
                 break;
             }
@@ -59,57 +61,71 @@ public class FixIssue1 {
     }
 
     public Type getReturnType() throws RefactoringException {
-        return nodeCreator.createNewSimpleType("ReturnObj");
+        return nodeCreator.createNewSimpleType(dataStoreName);
     }
 
     public List<VariableDeclarationStatement> createVariableDeclarationList() {
         return new ArrayList<>();
     }
 
-    public File createFileForDataStore() throws RefactoringException {
+
+    public TypeDeclaration createTypeDeclarationForDataStore() throws RefactoringException {
+
+        // field declaration list
+
+        List <FieldDeclaration> fieldDeclarationList = new ArrayList<>();
+
+        List <ModifierKeyword> modifierKeywordList = new ArrayList<>();
+        modifierKeywordList.add(ModifierKeyword.PRIVATE);
+        for(VariableDeclarationStatement variableDeclarationStatement : variableDeclarationStatementList) {
+            List <BaseNode> variableDeclarationFragmentList =  variableDeclarationStatement.getChildren(RelationTypes.FRAGMENT);
+            Type type = new Type(variableDeclarationStatement.getChildren(RelationTypes.TYPE).get(0).copySubtree().getNeo4jNode(), neo4jConnection);
+            for(BaseNode variableDeclarationFragment : variableDeclarationFragmentList) {
+                fieldDeclarationList.add(nodeCreator.createFieldDeclarationNode(new VariableDeclarationFragment(variableDeclarationFragment.copySubtree().getNeo4jNode(), neo4jConnection), type, modifierKeywordList, 1));
+            }
+        }
+
+        // method declaration list
+
+        List <Statement> statementList =  new ArrayList<>();
+
+        for(VariableDeclarationStatement variableDeclarationStatement : variableDeclarationStatementList) {
+            ThisExpression thisExpression = new ThisExpression(neo4jConnection);
+            FieldAccess leftHandSide = nodeCreator.createFieldAccess("a", thisExpression);
+            SimpleName rightHandSide = nodeCreator.createNewSimpleName("a");
+            Assignment assignment = nodeCreator.createNewAssignment(Operator.EQUAL, leftHandSide, rightHandSide);
+            ExpressionStatement expressionStatement = nodeCreator.createNewExpressionStatement(assignment, 1, 1);
+            statementList.add(expressionStatement);
+        }
+
+        Block block = nodeCreator.createNewBlock(statementList);
+
+        MethodDeclaration methodDeclaration = nodeCreator.createNewMethodDeclaration(dataStoreName, block, null);
+
+        List <MethodDeclaration> methodDeclarationList = new ArrayList<>();
+        methodDeclarationList.add(methodDeclaration);
+
+        // modifier keyword list
+
+        List <ModifierKeyword> modifierKeywordListForDataStore = new ArrayList<>();
+        modifierKeywordListForDataStore.add(ModifierKeyword.PUBLIC);
+
+        // creating class
+
+        return nodeCreator.createNewTypeDeclaration(dataStoreName, fieldDeclarationList, methodDeclarationList, modifierKeywordListForDataStore);
+    }
+
+    public File createFileForDataStore(TypeDeclaration typeDeclaration) throws RefactoringException {
         ImportDeclaration importDeclaration = nodeCreator.createNewImportDeclaration("java.util", false, true);
 
         List <ImportDeclaration> importDeclarationList = new ArrayList<>();
         importDeclarationList.add(importDeclaration);
 
-        return nodeCreator.createNewFile("ReturnObj", importDeclarationList, nodeCreator.createNewPackageDeclaration("package1"), null);
-    }
-
-    public TypeDeclaration createTypeDeclarationForDataStore() throws RefactoringException {
-        VariableDeclarationFragment variableDeclarationFragment = nodeCreator.createVariableDeclarationFragment("a");
-
-        PrimitiveType primitiveTypeInteger = nodeCreator.createNewPrimitiveType("int");
-
-        List <ModifierKeyword> modifierKeywordListForFields = new ArrayList<>();
-        modifierKeywordListForFields.add(ModifierKeyword.PRIVATE);
-
-        FieldDeclaration fieldDeclaration = nodeCreator.createFieldDeclarationNode(variableDeclarationFragment, primitiveTypeInteger, modifierKeywordListForFields, 1);
-
-        List <FieldDeclaration> fieldDeclarationList = new ArrayList<>();
-        fieldDeclarationList.add(fieldDeclaration);
-
-        Statement returnStatement = nodeCreator.createNewReturnStatement(variableDeclarationFragment, 1);
-
-        List <Statement> statementList =  new ArrayList<>();
-        statementList.add(returnStatement);
-
-        Block block = nodeCreator.createNewBlock(statementList);
-
-        MethodDeclaration methodDeclaration = nodeCreator.createNewMethodDeclaration("getA", block, primitiveTypeInteger);
-
-        List <MethodDeclaration> methodDeclarationList = new ArrayList<>();
-        methodDeclarationList.add(methodDeclaration);
-
-        List <ModifierKeyword> modifierKeywordListForMethod = new ArrayList<>();
-        modifierKeywordListForMethod.add(ModifierKeyword.PUBLIC);
-
-        ClassDeclaration classDeclaration = nodeCreator.createNewTypeDeclaration("ReturnObj", fieldDeclarationList, methodDeclarationList, modifierKeywordListForMethod);
-
-        return new TypeDeclaration();
+        return nodeCreator.createNewFile(dataStoreName, importDeclarationList, nodeCreator.createNewPackageDeclaration("package1"), typeDeclaration);
     }
 
     public ReturnStatement createReturnStatementForNewMethod() throws RefactoringException {
-        Type returnType = nodeCreator.createNewSimpleType("ReturnObj");
+        Type returnType = nodeCreator.createNewSimpleType(dataStoreName);
 
         SimpleName simpleName = nodeCreator.createNewSimpleName("a");
 
@@ -122,23 +138,28 @@ public class FixIssue1 {
     }
 
     public void fixIssue() {
+        this.dataStoreName = "ReturnObj";
         try {
-            List <VariableDeclarationStatement> variableDeclarationStatementList = createVariableDeclarationList();
-
-            Block block = getBlockForNewMethod();
-            List <Statement> insideStatementList = block.getStatements();
+//            variableDeclarationStatementList = createVariableDeclarationList();
+variableDeclarationStatementList = new ArrayList<>();
+VariableDeclarationFragment variableDeclarationFragment = nodeCreator.createVariableDeclarationFragment("a");
+Type type = nodeCreator.createNewPrimitiveType("int");
+VariableDeclarationStatement variableDeclarationStatement = nodeCreator.createNewVariableDeclarationStatement(variableDeclarationFragment, type, 1);
+variableDeclarationStatementList.add(variableDeclarationStatement);
+//            Block block = getBlockForNewMethod();
+//            List <Statement> insideStatementList = block.getStatements();
 
             ReturnStatement returnStatementForNewMethod = createReturnStatementForNewMethod();
 
             List <Statement> statementList = new ArrayList<>();
 
-            for(VariableDeclarationStatement variableDeclarationStatement : variableDeclarationStatementList) {
-                statementList.add(variableDeclarationStatement);
-            }
+//            for(VariableDeclarationStatement variableDeclarationStatement : variableDeclarationStatementList) {
+//                statementList.add(variableDeclarationStatement);
+//            }
 
-            for(Statement insideStatement : insideStatementList) {
-                statementList.add(insideStatement);
-            }
+//            for(Statement insideStatement : insideStatementList) {
+//                statementList.add(insideStatement);
+//            }
 
             statementList.add(returnStatementForNewMethod);
 
@@ -146,13 +167,13 @@ public class FixIssue1 {
 
             MethodDeclaration newMethodDeclaration = nodeCreator.createNewMethodDeclaration("AutoFixMethod", newMethodBlock, getReturnType());
 
-            newMethodDeclaration.addParameter(createParameterListForNewMethod());
+//            newMethodDeclaration.addParameter(createParameterListForNewMethod());
 
             TypeDeclaration newMethodTypeDeclaration = getTypeDeclarationForNewMethod();
 
             newMethodTypeDeclaration.addMethodDeclaration(newMethodDeclaration);
 
-            createFileForDataStore().addTypeDeclaration(createTypeDeclarationForDataStore());
+            createFileForDataStore(createTypeDeclarationForDataStore());
         } catch (RefactoringException re) {
             re.printStackTrace();
         }

@@ -143,7 +143,7 @@ public class App {
 //        try {
 //            refactorMethod();
 
-            Neo4jConnection neo4jConnection = new Neo4jConnection(new Sandbox("bolt://localhost/", "http://localhost/", "neo4j", Constants.NEO4J_PASSWORD), Integer.MAX_VALUE);
+        Neo4jConnection neo4jConnection = new Neo4jConnection(new Sandbox("bolt://localhost/", "http://localhost/", "neo4j", Constants.NEO4J_PASSWORD), Integer.MAX_VALUE);
 
 //            NodeCreator nodeCreator = new NodeCreator(neo4jConnection);
 
@@ -158,14 +158,15 @@ public class App {
 //            e.printStackTrace();
 //        }
         Long [][] nodeIdsArray = {
-            {1000334l, 1000988l},
-            {1000342l, 1000996l},
-            {1000354l, 1001008l},
-            {1000361l, 1001015l},
-            {1000369l, 1001023l},
-            {1000375l, 1001029l},
-            {1000381l, 1001035l},
-            {1000392l, 1001046l}
+//                {1000334l, 1000988l},
+                {1000334l, 1000334l},
+                {1000342l, 1000996l},
+                {1000354l, 1001008l},
+                {1000361l, 1001015l},
+                {1000369l, 1001023l},
+                {1000375l, 1001029l},
+                {1000381l, 1001035l},
+                {1000392l, 1001046l}
         };
 
         List <List <Long> > nodeIdMappingList = new ArrayList<>();
